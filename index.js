@@ -816,10 +816,8 @@ const videoMetadataPlugin = {
 
             .file-info {
               margin-bottom: 20px;
-              background-color: var(--bg-secondary);
-              border: 1px solid var(--border-primary);
-              padding: 12px;
-              border-radius: 8px;
+              border-bottom: 2px solid var(--border-primary);
+              padding-bottom: 10px;
             }
             .file-info-row {
               display: flex;
@@ -875,6 +873,7 @@ const videoMetadataPlugin = {
               border: 1px solid var(--border-primary);
               font-size: 13px;
               appearance: none;
+              background-color: #09090B;
               background: var(--bg-primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E") no-repeat;
               background-position: calc(100% - 17px) center;
               background-size: 12px 12px;
@@ -1036,7 +1035,7 @@ const videoMetadataPlugin = {
 
             .metadata-div{
               border: 2px solid var(--border-primary);
-              border-radius: 4px;
+              border-radius: 6px;
             }
             
             .select-all-row {
@@ -1044,8 +1043,7 @@ const videoMetadataPlugin = {
               align-items: center;
               gap: 8px;
               border-bottom: 2px solid var(--border-primary);
-              padding: 3px 8px;
-              background-color: var(--bg-secondary);
+              padding: 8px 8px;
             }
             .select-all-row input[type="checkbox"] {
               width: 15px;
@@ -1085,44 +1083,78 @@ const videoMetadataPlugin = {
               display: none;
             }
 
+            .file-info-row-horizontal {
+              display: flex;
+              flex-direction: row;
+              justify-content: space-between;
+              gap: 6px;
+              margin-top: 4px;
+            }
+            .file-info-col {
+              display: flex;
+              flex-direction: column;
+              min-width: 50px;
+              flex: 1 1 0;
+            }
+            .file-info-label {
+              font-size: 12px;
+              color: var(--text-secondary);
+              margin-bottom: 2px;
+            }
+            .file-info-value {
+              font-size: 13px;
+              color: var(--text-primary);
+              font-weight: 500;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            .file-info-title {
+              font-size: 14px;
+              font-weight: bold;
+              margin-bottom: 6px;
+            }
+
           </style>
           
           <div class="metadata-panel">
             
             <div class="metadata-content">
               <div class="file-info">
-                <div class="file-info-row" style="font-weight: bold; padding-top: 5px; padding-bottom: 10px;">
+                <div class="file-info-title" style="font-weight: bold; padding-top: 5px; padding-bottom: 10px;">
                   ${download.name || 'Video'}
                 </div>
-
-                <div class="file-info-row">
-                  <div class="file-info-label">Platform</div>
-                  <div class="file-info-value">${download.extractorKey || 'Unknown'}</div>
-                </div>
-                <div class="file-info-row">
-                  <div class="file-info-label">Format</div>
-                  <div class="file-info-value">${download.format || 'MP4 (H.264)'}</div>
-                </div>
-                <div class="file-info-row">
-                  <div class="file-info-label">Duration</div>
-                  <div class="file-info-value">${download.duration || '45:22'}</div>
-                </div>
-                <div class="file-info-row">
-                  <div class="file-info-label">Size</div>
-                  <div class="file-info-value">${download.size || '300 MB'}</div>
+                <div class="file-info-row file-info-row-horizontal">
+                  <div class="file-info-col">
+                    <div class="file-info-label">Platform</div>
+                    <div class="file-info-value">${download.extractorKey || 'Unknown'}</div>
+                  </div>
+                  <div class="file-info-col">
+                    <div class="file-info-label">Format</div>
+                    <div class="file-info-value">${download.format || 'MP4 (H.264)'}</div>
+                  </div>
+                  <div class="file-info-col">
+                    <div class="file-info-label">Duration</div>
+                    <div class="file-info-value">${download.duration || '45:22'}</div>
+                  </div>
+                  <div class="file-info-col">
+                    <div class="file-info-label">Size</div>
+                    <div class="file-info-value">${download.size || '300 MB'}</div>
+                  </div>
                 </div>
               </div>
               
-              <h3>Available Metadata for ${download.extractorKey || 'this platform'}:</h3>
-                            <div class="metadata-div">
-                <div class="select-all-row">
-                <input type="checkbox" id="selectAll" name="metadata-fields" value="selectAll" onchange="toggleSelectAll()">
-                <label for="selectAll">Select all</label>
-              </div>
-              <div class="metadata-fields">
-                ${generateMetadataFields(availableFields)}
-              </div>
-              </div>
+              <h3 style="margin-bottom: 15px;">Available Metadata for ${download.extractorKey || 'this platform'}:</h3>
+              <div class="metadata-div">
+                <div class="select-all-row" style="position: relative;">
+                  <input type="checkbox" id="selectAll" name="metadata-fields" value="selectAll" onchange="toggleSelectAll()">
+                  <label for="selectAll">Select all</label>
+                  <div id="selectedCount" class="selected-count" style="font-size:12px; color:var(--text-secondary); position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"></div>
+                </div>
+                <div class="metadata-fields">
+                  ${generateMetadataFields(availableFields)}
+                </div>
+              </div> 
               <h3>Export Format</h3>
               <div class="format-options">
                 <select class="format-select" id="formatSelect" onchange="updateFileExtension()">
@@ -1131,7 +1163,7 @@ const videoMetadataPlugin = {
                 </select>
               </div>
               
-              <h3>Output File</h3>
+              <h3>Save File to</h3>
               <div class="file-path">
                 <div class="path-text" id="savePath" title="${defaultPath}">${defaultPath}</div>
                 <button class="folder-btn" id="folderBtn" ${!hasMetadata ? 'disabled' : ''}
@@ -1204,6 +1236,23 @@ const videoMetadataPlugin = {
                 hideSuccessPopup();
               }
             }
+
+            // --- ADDED: Update Convert Button State ---
+            function updateConvertButtonState() {
+              const checkboxes = document.querySelectorAll('input[name="metadata-fields"]:not(#selectAll)');
+              const convertBtn = document.getElementById('convertBtn');
+              const selectedCountDiv = document.getElementById('selectedCount');
+              const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+              if (convertBtn) {
+                convertBtn.disabled = !anyChecked;
+              }
+              // --- Update the counter ---
+              if (selectedCountDiv) {
+                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+                selectedCountDiv.textContent = \`$\{checkedCount\} of $\{checkboxes.length\} selected\`;
+              }
+            }
+            // --- END ADDED ---
 
             function resetProgress() {
               const progressContainer = document.getElementById('progressContainer');
@@ -1331,6 +1380,8 @@ const videoMetadataPlugin = {
               metadataCheckboxes.forEach(checkbox => {
                 checkbox.checked = selectAllCheckbox.checked;
               });
+              // --- ADDED: Update button state after select all ---
+              updateConvertButtonState();
             }
 
             function handleConvertClick() {
@@ -1399,7 +1450,11 @@ const videoMetadataPlugin = {
             document.getElementById('selectAll').checked = true;
             document.querySelectorAll('input[name="metadata-fields"]').forEach(checkbox => {
               checkbox.checked = true;
+              // --- ADDED: Listen for changes to update button state ---
+              checkbox.addEventListener('change', updateConvertButtonState);
             });
+            // --- ADDED: Set initial button state ---
+            updateConvertButtonState();
           </script>
         `,
         width: 360,
@@ -1451,7 +1506,6 @@ const videoMetadataPlugin = {
    */
   async updateExtractionProgress(panelId, percent) {
     try {
-      const safePercent = Math.max(0, Math.min(100, Math.round(percent)));
       
       console.log(`Sending progress update: ${safePercent}% to panel ${panelId}`);
 
