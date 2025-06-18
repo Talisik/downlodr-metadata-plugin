@@ -860,25 +860,66 @@ const videoMetadataPlugin = {
             }
             .format-options {
               margin-top: 10px;
+              flex: 1;
             }
             .format-label {
               font-size: 13px;
               margin-bottom: 5px;
               color: var(--text-primary);
+              flex: 1;
             }
-            .format-select {
+            .custom-format-select {
+              position: relative;
               width: 100%;
-              padding: 8px;
-              border-radius: 4px;
-              border: 1px solid var(--border-primary);
+              max-width: 100%;
+              margin-bottom: 8px;
+              user-select: none;
+              display: flex;
+            }
+
+            .selected-format {
+              flex: 1;
+              width: 100%;
+              background-color: var(--bg-tooltip);
+              color: #fff;
+              padding: 5px 10px;
               font-size: 13px;
-              appearance: none;
-              background-color: #09090B;
-              background: var(--bg-primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E") no-repeat;
-              background-position: calc(100% - 17px) center;
-              background-size: 12px 12px;
-              padding-right: 40px;
-              color: var(--text-primary);
+              font-weight: 400;
+              border: 1px solid var(--border-primary);
+              border-radius: 4px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              min-width: 80px;
+              cursor: pointer;
+              position: relative;
+            }
+            .selected-format::after {
+              content: '\u25BC';
+              font-size: 12px;
+              margin-left: 8px;
+              color: #aaa;
+            }
+            .format-options-list {
+              position: absolute;
+              top: 110%;
+              left: 0;
+              width: 100%;
+              background: var(--bg-tooltip);
+              border: 1px solid var(--border-primary);
+              border-radius: 4px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+              z-index: 10;
+            }
+            .format-option {
+              padding: 5px 10px;
+              font-size: 13px;              
+              color: #fff;
+              cursor: pointer;
+              transition: background 0.15s;
+            }
+            .format-option:hover {
+              background: #23232A;
             }
             .file-path {
               display: flex;
@@ -1157,10 +1198,13 @@ const videoMetadataPlugin = {
               </div> 
               <h3>Export Format</h3>
               <div class="format-options">
-                <select class="format-select" id="formatSelect" onchange="updateFileExtension()">
-                  <option value="json">JSON</option>
-                  <option value="txt">TXT</option>
-                </select>
+                <div class="custom-format-select" id="customFormatSelect">
+                  <div class="selected-format" id="selectedFormatDiv">JSON</div>
+                  <div class="format-options-list" id="formatOptionsList" style="display: none;">
+                    <div class="format-option" data-value="json">JSON</div>
+                    <div class="format-option" data-value="txt">TXT</div>
+                  </div>
+                </div>
               </div>
               
               <h3>Save File to</h3>
@@ -1216,43 +1260,43 @@ const videoMetadataPlugin = {
           </div>
           
           <script>
-            // Update file extension when format changes
-            function updateFileExtension() {
-              const formatSelect = document.getElementById('formatSelect');
-              const pathElement = document.getElementById('savePath');
-              
-              if (formatSelect && pathElement) {
-                const selectedFormat = formatSelect.value;
-                const currentPath = pathElement.textContent;
-                const basePath = currentPath.replace(/\.[^.]+$/, ''); // Remove current extension
-                const newPath = basePath + '.' + selectedFormat;
-                pathElement.textContent = newPath;
-                pathElement.title = newPath;
-                
-                // Reset progress when format changes
-                resetProgress();
-                
-                // Hide success popup when format changes
-                hideSuccessPopup();
-              }
-            }
+            // --- Custom Format Dropdown ---
+            const customFormatSelect = document.getElementById('customFormatSelect');
+            const selectedFormatDiv = document.getElementById('selectedFormatDiv');
+            const formatOptionsList = document.getElementById('formatOptionsList');
+            const savePathDiv = document.getElementById('savePath');
+            let currentFormat = 'json';
 
-            // --- ADDED: Update Convert Button State ---
-            function updateConvertButtonState() {
-              const checkboxes = document.querySelectorAll('input[name="metadata-fields"]:not(#selectAll)');
-              const convertBtn = document.getElementById('convertBtn');
-              const selectedCountDiv = document.getElementById('selectedCount');
-              const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-              if (convertBtn) {
-                convertBtn.disabled = !anyChecked;
+            selectedFormatDiv.addEventListener('click', function(e) {
+              formatOptionsList.style.display = formatOptionsList.style.display === 'block' ? 'none' : 'block';
+            });
+
+            formatOptionsList.querySelectorAll('.format-option').forEach(option => {
+              option.addEventListener('click', function(e) {
+                const value = this.getAttribute('data-value');
+                currentFormat = value;
+                selectedFormatDiv.textContent = value.toUpperCase();
+                formatOptionsList.style.display = 'none';
+                // Update file extension
+                if (savePathDiv) {
+                  const currentPath = savePathDiv.textContent;
+                  const basePath = currentPath.replace(/\.[^.]+$/, '');
+                  const newPath = basePath + '.' + value;
+                  savePathDiv.textContent = newPath;
+                  savePathDiv.title = newPath;
+                }
+                // Reset progress and hide success popup
+                resetProgress();
+                hideSuccessPopup();
+              });
+            });
+
+            // Hide dropdown if clicking outside
+            document.addEventListener('click', function(e) {
+              if (!customFormatSelect.contains(e.target)) {
+                formatOptionsList.style.display = 'none';
               }
-              // --- Update the counter ---
-              if (selectedCountDiv) {
-                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-                selectedCountDiv.textContent = \`$\{checkedCount\} of $\{checkboxes.length\} selected\`;
-              }
-            }
-            // --- END ADDED ---
+            });
 
             function resetProgress() {
               const progressContainer = document.getElementById('progressContainer');
@@ -1403,7 +1447,7 @@ const videoMetadataPlugin = {
               window.parent.postMessage({
                 panelId: '${panelId}', 
                 action: 'convert', 
-                format: document.getElementById('formatSelect').value, 
+                format: currentFormat, 
                 savePath: document.getElementById('savePath').textContent,
                 selectedFields: selectedFields
               }, '*');
