@@ -702,9 +702,9 @@ const videoMetadataPlugin = {
             }
             
             .panel-footer {
-              background: var(--bg-secondary);
+              background: var(--bg-primary);
               padding: 8px 20px;
-              border-top: 1px solid var(--border-primary);
+              border-top: 2px solid var(--border-primary);
               flex-shrink: 0;
             }
 
@@ -881,7 +881,7 @@ const videoMetadataPlugin = {
               flex: 1;
               width: 100%;
               background-color: var(--bg-tooltip);
-              color: #fff;
+              color: var(--text-primary);
               padding: 5px 10px;
               font-size: 13px;
               font-weight: 400;
@@ -914,12 +914,13 @@ const videoMetadataPlugin = {
             .format-option {
               padding: 5px 10px;
               font-size: 13px;              
-              color: #fff;
+              color: var(--text-primary);
               cursor: pointer;
               transition: background 0.15s;
             }
             .format-option:hover {
-              background: #23232A;
+              background: var(--bg-hover);
+              color: var(--text-primary);
             }
             .file-path {
               display: flex;
@@ -1015,7 +1016,7 @@ const videoMetadataPlugin = {
             }
               .btn {
               flex: 1;
-              padding: 6px 8px;
+              padding: 6px 12px;
               border-radius: 4px;
               border: none;
               font-size: 13px;
@@ -1025,7 +1026,7 @@ const videoMetadataPlugin = {
               transition: background-color 0.2s ease;
             }
             .btn-cancel {
-              background: var(--bg-primary);
+              background: var(--bg-tooltip);
               border: 1px solid var(--border-primary); 
               color: var(--text-primary);
               font-weight: 700;
@@ -1034,6 +1035,7 @@ const videoMetadataPlugin = {
               background: var(--bg-hover);
             }
             .btn-convert {
+              font-weight: 700;
               background: var(--accent-primary);
               color: var(--text-on-accent);
             }
@@ -1260,6 +1262,24 @@ const videoMetadataPlugin = {
           </div>
           
           <script>
+
+          // --- ADDED: Update Convert Button State ---
+            function updateConvertButtonState() {
+              const checkboxes = document.querySelectorAll('input[name="metadata-fields"]:not(#selectAll)');
+              const convertBtn = document.getElementById('convertBtn');
+              const selectedCountDiv = document.getElementById('selectedCount');
+              const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+              if (convertBtn) {
+                convertBtn.disabled = !anyChecked;
+              }
+              // --- Update the counter ---
+              if (selectedCountDiv) {
+                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+                selectedCountDiv.textContent = \`$\{checkedCount\} of $\{checkboxes.length\} selected\`;
+              }
+            }
+            // --- END ADDED ---
+            
             // --- Custom Format Dropdown ---
             const customFormatSelect = document.getElementById('customFormatSelect');
             const selectedFormatDiv = document.getElementById('selectedFormatDiv');
@@ -1492,9 +1512,12 @@ const videoMetadataPlugin = {
             
             // Set default selections
             document.getElementById('selectAll').checked = true;
-            document.querySelectorAll('input[name="metadata-fields"]').forEach(checkbox => {
+            // Ensure all metadata checkboxes are checked by default
+            document.querySelectorAll('input[name="metadata-fields"]:not(#selectAll)').forEach(checkbox => {
               checkbox.checked = true;
-              // --- ADDED: Listen for changes to update button state ---
+            });
+            // Add event listeners for all checkboxes (including selectAll)
+            document.querySelectorAll('input[name="metadata-fields"]').forEach(checkbox => {
               checkbox.addEventListener('change', updateConvertButtonState);
             });
             // --- ADDED: Set initial button state ---
