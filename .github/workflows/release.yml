@@ -1,0 +1,120 @@
+name: Create Plugin Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0, v2.1.3, etc.
+  workflow_dispatch:  # Allows manual triggering
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating releases
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Get version from tag or input
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Update manifest version
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # Remove 'v' prefix if present
+          VERSION_NUMBER="${VERSION#v}"
+          
+          # Update version in manifest.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_NUMBER\"/" manifest.json
+          
+          # Verify the change
+          echo "Updated manifest.json version:"
+          grep "version" manifest.json
+          
+      - name: Create plugin zip
+        run: |
+          # Create a temporary directory for the plugin files
+          mkdir -p temp-plugin
+          
+          # Copy essential plugin files
+          cp manifest.json temp-plugin/
+          cp index.js temp-plugin/
+          cp README.md temp-plugin/
+          
+          # Create the zip file
+          cd temp-plugin
+          zip -r "../downlodr-metadata-plugin-${{ steps.get_version.outputs.version }}.zip" .
+          cd ..
+          
+          # Clean up temp directory
+          rm -rf temp-plugin
+          
+          echo "Created plugin zip file"
+          ls -la *.zip
+          
+      - name: Read plugin info from manifest
+        id: plugin_info
+        run: |
+          PLUGIN_NAME=$(jq -r '.name' manifest.json)
+          PLUGIN_DESCRIPTION=$(jq -r '.description' manifest.json)
+          echo "name=$PLUGIN_NAME" >> $GITHUB_OUTPUT
+          echo "description=$PLUGIN_DESCRIPTION" >> $GITHUB_OUTPUT
+          
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << EOF
+          ## ${{ steps.plugin_info.outputs.name }} ${{ steps.get_version.outputs.version }}
+          
+          ${{ steps.plugin_info.outputs.description }}
+          
+          ### Installation
+          1. Download the \`downlodr-metadata-plugin-${{ steps.get_version.outputs.version }}.zip\` file from the assets below
+          2. Extract the zip file
+          3. Install the plugin in your Downlodr application
+          
+          ### What's Included
+          - \`manifest.json\` - Plugin manifest and configuration
+          - \`index.js\` - Main plugin code
+          - \`README.md\` - Documentation and usage instructions
+          
+          ### Requirements
+          - Downlodr app version 1.3.4 or higher
+          
+          ---
+          
+          **Full Changelog**: https://github.com/\${{ github.repository }}/compare/\${{ github.event.before }}...\${{ steps.get_version.outputs.tag_name }}
+          EOF
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: "${{ steps.plugin_info.outputs.name }} ${{ steps.get_version.outputs.version }}"
+          body_path: release_notes.md
+          files: |
+            downlodr-metadata-plugin-${{ steps.get_version.outputs.version }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Release Summary
+        run: |
+          echo "🎉 Successfully created release ${{ steps.get_version.outputs.version }}"
+          echo "📦 Plugin zip file: downlodr-metadata-plugin-${{ steps.get_version.outputs.version }}.zip"
+          echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.get_version.outputs.tag_name }}" 
