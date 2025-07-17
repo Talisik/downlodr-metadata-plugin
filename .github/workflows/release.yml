@@ -70,9 +70,12 @@ jobs:
         id: plugin_info
         run: |
           PLUGIN_NAME=$(jq -r '.name' manifest.json)
-          PLUGIN_DESCRIPTION=$(jq -r '.description' manifest.json)
           echo "name=$PLUGIN_NAME" >> $GITHUB_OUTPUT
-          echo "description=$PLUGIN_DESCRIPTION" >> $GITHUB_OUTPUT
+          
+          # Handle multiline description using delimiter format
+          echo "description<<EOF" >> $GITHUB_OUTPUT
+          jq -r '.description' manifest.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           
       - name: Generate release notes
         id: release_notes
