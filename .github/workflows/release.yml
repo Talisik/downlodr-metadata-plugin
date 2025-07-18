@@ -86,9 +86,14 @@ jobs:
           ${{ steps.plugin_info.outputs.description }}
           
           ### Installation
-          1. Download the \`downlodr-metadata-plugin-${{ steps.get_version.outputs.version }}.zip\` file from the assets below
-          2. Extract the zip file
-          3. Install the plugin in your Downlodr application
+          - Automatic
+              1. Go to browse plugins
+              2. Choose install or update metadata plugin
+
+          - Manual
+              1. Download the \`downlodr-metadata-plugin-${{ steps.get_version.outputs.version }}.zip\` file from the assets below
+              2. Extract the zip file
+              3. Install the plugin in your Downlodr application
           
           ### What's Included
           - \`manifest.json\` - Plugin manifest and configuration
