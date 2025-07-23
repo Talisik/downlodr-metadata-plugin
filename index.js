@@ -1,7 +1,7 @@
 const videoMetadataPlugin = {
   id: 'videometadata',
   name: 'Metadata Exporter',
-  version: '1.0.0',
+  version: '1.0.1',
   description: 'Video Metadata Exporter Plugin\n\nThis plugin extracts comprehensive metadata from downloaded videos and exports it to clean, structured JSON or TXT files for easy analysis and documentation.\n\nIt features intelligent platform detection that:\n- Automatically adapts available metadata fields based on the video source (YouTube, Facebook, Instagram, etc.)\n- Allows selective export of specific metadata fields like title, description, views, likes, tags, and more\n- Formats data appropriately for each output type with readable labels and structure\n- Handles missing data gracefully without breaking the export process\n\nPerfect for content creators, researchers, and archivists who need structured video metadata for analysis, cataloging, or backup purposes.',
   icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9987 10.666L14.6654 7.99935L11.9987 5.33268M3.9987 5.33268L1.33203 7.99935L3.9987 10.666M9.66536 2.66602L6.33203 13.3327" stroke="#16161E" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   author: 'Downlodr',
@@ -449,8 +449,35 @@ const videoMetadataPlugin = {
       // Default format
       const currentFormat = 'json';
       
+      // Debug: Log the download.location to understand its structure
+      console.log('DEBUG - download.location:', download.location);
+      console.log('DEBUG - download.name:', download.name);
       
-      const defaultPath = `${download.location || this.api.system.getDefaultDownloadPath() || "C:\\Downloads\\"}${download.name.replace(/\.[^/.]+$/, "")}.${currentFormat}`;
+      // Extract directory from download.location and construct proper path
+      let directory;
+      if (download.location) {
+        console.log('DEBUG - Processing location...');
+        
+        // Check if location is already a directory or a full file path
+        if (download.location.includes('.')) {
+          // It's a full file path, extract the directory
+          directory = download.location.substring(0, download.location.lastIndexOf('\\'));
+          console.log('DEBUG - Extracted directory from file path:', directory);
+        } else {
+          // It's already a directory path
+          directory = download.location.replace(/\\+$/, ''); // Remove trailing backslashes
+          console.log('DEBUG - Using location as directory:', directory);
+        }
+      } else {
+        directory = this.api.system.getDefaultDownloadPath() || "C:\\Downloads";
+        console.log('DEBUG - Using default directory:', directory);
+      }
+      
+      // Ensure we don't have double backslashes in the final path
+      const cleanDirectory = directory.replace(/\\+$/, ''); // Remove trailing backslashes
+      const cleanFilename = download.name.replace(/\.[^/.]+$/, "");
+      const defaultPath = `${cleanDirectory}\\${cleanFilename}.${currentFormat}`;
+      console.log('DEBUG - Final defaultPath:', defaultPath);
       
       // Check if we have metadata right away
       const hasMetadataRightAway = true;
@@ -470,7 +497,7 @@ const videoMetadataPlugin = {
       const downloadWithoutExt = {
         ...download,
         defaultPath: download.location ? download.location.replace(/\.[^/.]+$/, '') : '',
-        name: download.name ? download.location.replace(/\.[^/.]+$/, '') : ''
+        name: download.name ? download.name.replace(/\.[^/.]+$/, '') : ''
       };
             try {
               console.log('hau', downloadWithoutExt);
@@ -1212,7 +1239,7 @@ const videoMetadataPlugin = {
               <div class="file-path">
                 <div class="path-text" id="savePath" title="${defaultPath}">${defaultPath}</div>
                 <button class="folder-btn" id="folderBtn" ${!hasMetadata ? 'disabled' : ''}
-                        onclick="window.parent.postMessage({panelId: '${panelId}', action: 'browse', format: document.getElementById('formatSelect').value}, '*')">
+                        onclick="window.parent.postMessage({panelId: '${panelId}', action: 'browse', format: currentFormat}, '*')">
                   <div class="folder-icon" style="margin-top:2px; margin-left:8px;">
                     <svg width="16" height="16" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                       <path d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48zm0 272H48V112h140.12l64 64H464v224z"/>
@@ -1671,7 +1698,7 @@ const videoMetadataPlugin = {
       await this.updateExtractionProgress(panelId, 85);
       
       // Export the file
-      const success = await this.exportFile(outputContent, savePath, format);
+      const success = await this.exportFile(outputContent, savePath, format, download.name);
       
       if (success) {
         await this.updateExtractionProgress(panelId, 100);
@@ -1734,9 +1761,34 @@ const videoMetadataPlugin = {
       const baseName = download.name || 'metadata';
       const defaultFilename = `${baseName}.${format}`;
       
+      // Debug: Log the download data in save dialog
+      console.log('DEBUG DIALOG - download.location:', download.location);
+      console.log('DEBUG DIALOG - download.name:', download.name);
+      
+      // Extract directory from download.location if it's a full file path
+      let defaultPath = defaultFilename;
+      if (download.location) {
+        console.log('DEBUG DIALOG - Processing location...');
+        
+        // Check if location is already a directory or a full file path
+        if (download.location.includes('.')) {
+          // It's a full file path, extract the directory
+          const directory = download.location.substring(0, download.location.lastIndexOf('\\'));
+          defaultPath = `${directory}\\${defaultFilename}`;
+          console.log('DEBUG DIALOG - Extracted directory from file path:', directory);
+        } else {
+          // It's already a directory path
+          const cleanDirectory = download.location.replace(/\\+$/, ''); // Remove trailing backslashes
+          defaultPath = `${cleanDirectory}\\${defaultFilename}`;
+          console.log('DEBUG DIALOG - Using location as directory:', cleanDirectory);
+        }
+        
+        console.log('DEBUG DIALOG - Final defaultPath:', defaultPath);
+      }
+      
       const result = await this.api.ui.showSaveFileDialog({
         title: 'Select save location',
-        defaultPath: download.location ? `${download.location}/${defaultFilename}` : defaultFilename,
+        defaultPath: defaultPath,
         filters: filters,
         properties: ['showOverwriteConfirmation', 'createDirectory']
       });
@@ -1759,9 +1811,10 @@ const videoMetadataPlugin = {
    * @param {string} content - Text content
    * @param {string} filepath - Full file path
    * @param {string} format - File format
+   * @param {string} downloadName - Download name
    * @returns {Promise<boolean>} - Success status
    */
-  async exportFile(content, filepath, format = 'json') {
+  async exportFile(content, filepath, format = 'json', downloadName) {
     try {
       console.log(`Exporting file: ${filepath} in format: ${format}`);
       
@@ -1795,12 +1848,12 @@ const videoMetadataPlugin = {
       const directory = cleanPath.substring(0, cleanPath.lastIndexOf('\\'));
       console.log(`Target directory: ${directory}`);
       console.log(`Target filename: ${cleanPath.split('\\').pop()}`);
+      console.log(`Full clean path: ${cleanPath}`);
       
       try {
         const result = await this.api.utilities.writeFile({
-          fileName: cleanPath.split('\\').pop(),
           content: content,
-          customPath: cleanPath,
+          customPath: cleanPath,  // Use full file path instead of just directory
           overwrite: true
         });
         
