@@ -1,7 +1,7 @@
 const videoMetadataPlugin = {
   id: 'videometadata',
   name: 'Metadata Exporter',
-  version: '1.0.2',
+  version: '1.0.3',
   description: 'Video Metadata Exporter Plugin\n\nThis plugin extracts comprehensive metadata from downloaded videos and exports it to clean, structured JSON or TXT files for easy analysis and documentation.\n\nIt features intelligent platform detection that:\n- Automatically adapts available metadata fields based on the video source (YouTube, Facebook, Instagram, etc.)\n- Allows selective export of specific metadata fields like title, description, views, likes, tags, and more\n- Formats data appropriately for each output type with readable labels and structure\n- Handles missing data gracefully without breaking the export process\n\nPerfect for content creators, researchers, and archivists who need structured video metadata for analysis, cataloging, or backup purposes.',
   icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9987 10.666L14.6654 7.99935L11.9987 5.33268M3.9987 5.33268L1.33203 7.99935L3.9987 10.666M9.66536 2.66602L6.33203 13.3327" stroke="#16161E" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   author: 'Downlodr',
@@ -1698,6 +1698,12 @@ const videoMetadataPlugin = {
       await this.updateExtractionProgress(panelId, 85);
       
       // Export the file
+      console.log('final info used:');
+      console.log('Saved Path',savePath);
+      console.log('Saved Path',format);
+      console.log('Saved Path',download.name);
+
+
       const success = await this.exportFile(outputContent, savePath, format, download.name);
       
       if (success) {
