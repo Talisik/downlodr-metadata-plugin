@@ -1,7 +1,7 @@
 {
     "id": "metadata-exporter-downlodr",
     "name": "Metadata Exporter",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "description": "View and edit video metadata with powerful batch processing tools.\n\n\nThe Metadata Exporter plugin extracts comprehensive metadata from downloaded videos and exports it to clean, structured JSON or TXT files for easy analysis and documentation.\n\nIt features intelligent platform detection that:\n- Automatically adapts available metadata fields based on the video source (YouTube, Facebook, Instagram, etc.)\n- Allows selective export of specific metadata fields like title, description, views, likes, tags, and more\n- Formats data appropriately for each output type with readable labels and structure\n- Handles missing data gracefully without breaking the export process\n\nPerfect for content creators, researchers, and archivists who need structured video metadata for analysis, cataloging, or backup purposes.",
     "main": "index.js",
     "author": "Downlodr",

@@ -1,13 +1,67 @@
 const videoMetadataPlugin = {
   id: 'videometadata',
   name: 'Metadata Exporter',
-  version: '1.0.2',
+  version: '1.0.5',
   description: 'Video Metadata Exporter Plugin\n\nThis plugin extracts comprehensive metadata from downloaded videos and exports it to clean, structured JSON or TXT files for easy analysis and documentation.\n\nIt features intelligent platform detection that:\n- Automatically adapts available metadata fields based on the video source (YouTube, Facebook, Instagram, etc.)\n- Allows selective export of specific metadata fields like title, description, views, likes, tags, and more\n- Formats data appropriately for each output type with readable labels and structure\n- Handles missing data gracefully without breaking the export process\n\nPerfect for content creators, researchers, and archivists who need structured video metadata for analysis, cataloging, or backup purposes.',
   icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9987 10.666L14.6654 7.99935L11.9987 5.33268M3.9987 5.33268L1.33203 7.99935L3.9987 10.666M9.66536 2.66602L6.33203 13.3327" stroke="#16161E" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   author: 'Downlodr',
   
   menuItemIds: [],
   taskBarItemIds: [],
+
+  // Path utilities for cross-platform compatibility
+  pathUtils: {
+    // Get path separator from context data or fall back to system detection
+    getSeparator(contextData) {
+      if (contextData && contextData.separatorType) {
+        return contextData.separatorType;
+      }
+      
+      // Fallback to OS detection
+      if (contextData && contextData.osType) {
+        return contextData.osType === 'windows' ? '\\' : '/';
+      }
+      
+      // Final fallback - try to detect from existing paths or use platform default
+      return typeof window !== 'undefined' && window.navigator && window.navigator.platform.toLowerCase().includes('win') ? '\\' : '/';
+    },
+
+    // Join path components with appropriate separator
+    join(contextData, ...parts) {
+      const separator = this.getSeparator(contextData);
+      return parts.filter(part => part && part.length > 0).join(separator);
+    },
+
+    // Get directory from a file path
+    dirname(contextData, path) {
+      if (!path) return '';
+      const separator = this.getSeparator(contextData);
+      const lastIndex = path.lastIndexOf(separator);
+      return lastIndex !== -1 ? path.substring(0, lastIndex) : '';
+    },
+
+    // Get filename from a path
+    basename(path) {
+      if (!path) return '';
+      const parts = path.split(/[\/\\]/);
+      return parts[parts.length - 1] || '';
+    },
+
+    // Normalize path separators
+    normalize(contextData, path) {
+      if (!path) return '';
+      const separator = this.getSeparator(contextData);
+      return path.replace(/[\/\\]/g, separator);
+    },
+
+    // Remove trailing separators
+    removeTrailingSeparators(contextData, path) {
+      if (!path) return '';
+      const separator = this.getSeparator(contextData);
+      const regex = separator === '\\' ? /\\+$/ : /\/+$/;
+      return path.replace(regex, '');
+    }
+  },
 
   // Metadata extraction methods
   extractors: {
@@ -461,22 +515,23 @@ const videoMetadataPlugin = {
         // Check if location is already a directory or a full file path
         if (download.location.includes('.')) {
           // It's a full file path, extract the directory
-          directory = download.location.substring(0, download.location.lastIndexOf('\\'));
+          directory = this.pathUtils.dirname(contextData, download.location);
           console.log('DEBUG - Extracted directory from file path:', directory);
         } else {
           // It's already a directory path
-          directory = download.location.replace(/\\+$/, ''); // Remove trailing backslashes
+          directory = this.pathUtils.removeTrailingSeparators(contextData, download.location);
           console.log('DEBUG - Using location as directory:', directory);
         }
       } else {
-        directory = this.api.system.getDefaultDownloadPath() || "C:\\Downloads";
+        const defaultDownloadPath = this.api.system.getDefaultDownloadPath();
+        directory = defaultDownloadPath || (contextData && contextData.osType === 'windows' ? "C:\\Downloads" : "/Downloads");
         console.log('DEBUG - Using default directory:', directory);
       }
       
-      // Ensure we don't have double backslashes in the final path
-      const cleanDirectory = directory.replace(/\\+$/, ''); // Remove trailing backslashes
+      // Ensure we don't have trailing separators
+      const cleanDirectory = this.pathUtils.removeTrailingSeparators(contextData, directory);
       const cleanFilename = download.name.replace(/\.[^/.]+$/, "");
-      const defaultPath = `${cleanDirectory}\\${cleanFilename}.${currentFormat}`;
+      const defaultPath = this.pathUtils.join(contextData, cleanDirectory, `${cleanFilename}.${currentFormat}`);
       console.log('DEBUG - Final defaultPath:', defaultPath);
       
       // Check if we have metadata right away
@@ -501,7 +556,7 @@ const videoMetadataPlugin = {
       };
             try {
               console.log('hau', downloadWithoutExt);
-              const result = await this.showSaveFileDialog(downloadWithoutExt, event.data.format || currentFormat);
+              const result = await this.showSaveFileDialog(downloadWithoutExt, event.data.format || currentFormat, contextData);
               
               if (result) {
                 console.log('Selected save path:', result.filePath);
@@ -543,7 +598,7 @@ const videoMetadataPlugin = {
                   }, '*');
                 }
                 
-                const directoryPath = filePathString.substring(0, filePathString.lastIndexOf('\\'));
+                const directoryPath = this.pathUtils.dirname(contextData, filePathString);
                 this.api.ui.showNotification({
                   title: 'Location Selected',
                   message: `Save location: ${directoryPath}`,
@@ -585,14 +640,15 @@ const videoMetadataPlugin = {
               const format = event.data.format || 'json';
               const savePath = event.data.savePath || defaultPath;
               const pathWithoutExtension = savePath.replace(/\.[^/.]+$/, '');
-              const directoryPath = pathWithoutExtension.substring(0, pathWithoutExtension.lastIndexOf('\\'));
+              const directoryPath = this.pathUtils.dirname(contextData, pathWithoutExtension);
 
               // Clean up duplicated filename in the path
               let cleanedSavePath = savePath;
-              const lastSlashIndex = savePath.lastIndexOf('\\');
-              if (lastSlashIndex !== -1) {
-                const directory = savePath.substring(0, lastSlashIndex);
-                const filename = savePath.substring(lastSlashIndex + 1);
+              const separator = this.pathUtils.getSeparator(contextData);
+              const lastSeparatorIndex = savePath.lastIndexOf(separator);
+              if (lastSeparatorIndex !== -1) {
+                const directory = savePath.substring(0, lastSeparatorIndex);
+                const filename = savePath.substring(lastSeparatorIndex + 1);
                 
                 // Check if filename contains duplicated parts (ending with any extension then .json or .txt)
                 const duplicatedPattern = new RegExp(`(.+)\\.[^.]+\\1\\.(${format})$`);
@@ -601,14 +657,14 @@ const videoMetadataPlugin = {
                 if (match) {
                   // Remove the duplicated part, keep just the base name with the correct extension
                   const baseName = match[1];
-                  cleanedSavePath = `${directory}\\${baseName}.${format}`;
+                  cleanedSavePath = this.pathUtils.join(contextData, directory, `${baseName}.${format}`);
                 }
               }
 
               const selectedFields = event.data.selectedFields || [];
               console.log('original path: ', savePath);
               console.log('cleaned path: ', cleanedSavePath);
-              await this.handleExtractAction(download, format, cleanedSavePath, selectedFields, panelId);
+              await this.handleExtractAction(download, format, cleanedSavePath, selectedFields, panelId, contextData);
               
               // Re-enable convert button after completion
               window.postMessage({
@@ -671,7 +727,8 @@ const videoMetadataPlugin = {
               // Handle opening the folder
               try {
                 const fullPath = event.data.savePath;
-                const lastSeparatorIndex = Math.max(fullPath.lastIndexOf('\\'), fullPath.lastIndexOf('/'));
+                const separator = this.pathUtils.getSeparator(contextData);
+                const lastSeparatorIndex = fullPath.lastIndexOf(separator);
                 const directory = lastSeparatorIndex !== -1 ? fullPath.substring(0, lastSeparatorIndex + 1) : '';
                 
                 await window.downlodrFunctions.openFolder(directory, fullPath);
@@ -1577,9 +1634,7 @@ const videoMetadataPlugin = {
    */
   extractNameFromLocation(location) {
     if (!location) return 'download';
-    const parts = location.split(/[\/\\]/);
-    const filename = parts[parts.length - 1];
-    return filename || 'download';
+    return this.pathUtils.basename(location) || 'download';
   },
 
   /**
@@ -1639,8 +1694,9 @@ const videoMetadataPlugin = {
    * @param {string} savePath - The path to save the file
    * @param {Array} selectedFields - Array of selected metadata fields
    * @param {string} panelId - ID of the panel triggering the action
+   * @param {Object} contextData - Context data with OS info
    */
-  async handleExtractAction(download, format, savePath, selectedFields, panelId) {
+  async handleExtractAction(download, format, savePath, selectedFields, panelId, contextData = null) {
     try {
       console.log(`Starting metadata extraction with panelId: ${panelId}`);
       
@@ -1698,7 +1754,7 @@ const videoMetadataPlugin = {
       await this.updateExtractionProgress(panelId, 85);
       
       // Export the file
-      const success = await this.exportFile(outputContent, savePath, format, download.name);
+      const success = await this.exportFile(outputContent, savePath, format, download.name, contextData);
       
       if (success) {
         await this.updateExtractionProgress(panelId, 100);
@@ -1750,9 +1806,10 @@ const videoMetadataPlugin = {
    * Show save file dialog
    * @param {Object} download - Download item
    * @param {string} format - Output format
+   * @param {Object} contextData - Context data with OS info
    * @returns {Promise<Object>} - Dialog result
    */
-  async showSaveFileDialog(download, format) {
+  async showSaveFileDialog(download, format, contextData = null) {
     try {
       const filters = format === 'txt' ? 
         [{ name: 'Text Files', extensions: ['txt'] }] : 
@@ -1773,13 +1830,13 @@ const videoMetadataPlugin = {
         // Check if location is already a directory or a full file path
         if (download.location.includes('.')) {
           // It's a full file path, extract the directory
-          const directory = download.location.substring(0, download.location.lastIndexOf('\\'));
-          defaultPath = `${directory}\\${defaultFilename}`;
+          const directory = this.pathUtils.dirname(contextData, download.location);
+          defaultPath = this.pathUtils.join(contextData, directory, defaultFilename);
           console.log('DEBUG DIALOG - Extracted directory from file path:', directory);
         } else {
           // It's already a directory path
-          const cleanDirectory = download.location.replace(/\\+$/, ''); // Remove trailing backslashes
-          defaultPath = `${cleanDirectory}\\${defaultFilename}`;
+          const cleanDirectory = this.pathUtils.removeTrailingSeparators(contextData, download.location);
+          defaultPath = this.pathUtils.join(contextData, cleanDirectory, defaultFilename);
           console.log('DEBUG DIALOG - Using location as directory:', cleanDirectory);
         }
         
@@ -1812,9 +1869,10 @@ const videoMetadataPlugin = {
    * @param {string} filepath - Full file path
    * @param {string} format - File format
    * @param {string} downloadName - Download name
+   * @param {Object} contextData - Context data with OS info
    * @returns {Promise<boolean>} - Success status
    */
-  async exportFile(content, filepath, format = 'json', downloadName) {
+  async exportFile(content, filepath, format = 'json', downloadName, contextData = null) {
     try {
       console.log(`Exporting file: ${filepath} in format: ${format}`);
       
@@ -1835,7 +1893,7 @@ const videoMetadataPlugin = {
       }
       
       // Normalize path separators and remove invalid characters (but preserve drive letter colon)
-      let cleanPath = filepath.replace(/\\/g, '\\'); // Normalize backslashes
+      let cleanPath = this.pathUtils.normalize(contextData, filepath);
       
       // Only replace colons that are NOT part of drive letters (Windows C:, D:, etc.)
       // This regex preserves drive letter colons but removes other colons
@@ -1845,9 +1903,9 @@ const videoMetadataPlugin = {
       cleanPath = cleanPath.replace(/[<>"|?*]/g, '_');
       
       // Ensure the directory exists
-      const directory = cleanPath.substring(0, cleanPath.lastIndexOf('\\'));
+      const directory = this.pathUtils.dirname(contextData, cleanPath);
       console.log(`Target directory: ${directory}`);
-      console.log(`Target filename: ${cleanPath.split('\\').pop()}`);
+      console.log(`Target filename: ${this.pathUtils.basename(cleanPath)}`);
       console.log(`Full clean path: ${cleanPath}`);
       
       try {
