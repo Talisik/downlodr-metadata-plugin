@@ -19,6 +19,7 @@ const videoMetadataPlugin = {
       
       // Fallback to OS detection
       if (contextData && contextData.osType) {
+        console.log(osType);
         return contextData.osType === 'windows' ? '\\' : '/';
       }
       
