@@ -14,6 +14,7 @@ const videoMetadataPlugin = {
     // Get path separator from context data or fall back to system detection
     getSeparator(contextData) {
       if (contextData && contextData.separatorType) {
+        console.log(contextData.separatorType);
         return contextData.separatorType;
       }
       
